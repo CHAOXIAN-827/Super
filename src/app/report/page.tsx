@@ -6,7 +6,7 @@ import { UploadZone } from "@/components/report/upload-zone";
 import { AnalysisResult } from "@/components/report/analysis-result";
 import { Card, CardContent, Button, Spinner, EmptyState } from "@/components/ui/base";
 import { useAppStore } from "@/stores/app-store";
-import { analyzeReport } from "@/lib/claude";
+import { analyzeReport, getOcrDemoText } from "@/lib/claude";
 import { formatDateTime } from "@/lib/utils";
 import type { MedicalReport } from "@/types/report";
 
@@ -24,24 +24,15 @@ export default function ReportPage() {
     setView("analyzing");
 
     try {
-      // Step 1: OCR
-      const formData = new FormData();
-      formData.append("file", file);
-      const ocrResponse = await fetch("/api/ocr", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!ocrResponse.ok) throw new Error("图片识别失败");
-
-      const ocrData = await ocrResponse.json();
-      setOcrText(ocrData.text);
+      // Step 1: OCR (demo mode - client side)
+      const demoText = getOcrDemoText();
+      setOcrText(demoText);
 
       // Create report entry
       const report: MedicalReport = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, "") || "检查报告",
-        ocrText: ocrData.text,
+        ocrText: demoText,
         analysis: null,
         createdAt: new Date().toISOString(),
       };
@@ -49,7 +40,7 @@ export default function ReportPage() {
       setCurrentReport(report);
 
       // Step 2: AI Analysis
-      const analysis = await analyzeReport(ocrData.text);
+      const analysis = await analyzeReport(demoText);
       updateReport(report.id, { analysis });
       setCurrentReport({ ...report, analysis });
       setView("result");
